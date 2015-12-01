@@ -112,12 +112,18 @@ protected:
 
     std::vector<std::pair<int, int> > fill_all_components();
     void fill_a_component(int x, int y, guint32 argb);
-    unsigned int grow_a_component(int x, int y, int& contentions);
-    inline bool allow_grow(int x, int y, guint32 ownclr);
+    unsigned int grow_a_component(int x, int y, int& contentions, bool reversed);
+    bool allow_grow(int x, int y, guint32 ownclr, guint32 extraclr);
+    inline bool allow_grow(int x, int y, guint32 ownclr)
+    {
+        return allow_grow(x, y, ownclr, ownclr);
+    }
 
     void run_to_border(int& x, int& y);
     void calculate_outline(int x, int y, vector<std::pair<int, int> >& outside,
-                           vector<std::pair<int, int> >& inside);
+                           vector<std::pair<int, int> >& inside,
+                           bool debug_image = true);
+    coordpair find_color(guint32 color, coordpair startpoint);
 
     // Misc. Functions
     static void opacify(Glib::RefPtr<Gdk::Pixbuf> pixbuf);
@@ -125,6 +131,9 @@ protected:
     guint32 clr;
     guint32 get_an_unused_color();
     std::vector<guint32> usedcolors;
+    std::vector<guint32> flaggedcolors;
+    
+    coordpair point_background;
 };
 
 #endif // SURFACE_H
