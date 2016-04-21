@@ -163,11 +163,27 @@ vector<shared_ptr<icoords> > Surface::get_toolpath(shared_ptr<RoutingMill> mill,
             
             for (int j = 0; j < flaggedcolors.size(); j++)
             {
-                added += grow_a_component(negativecomponents[j].first,
-                negativecomponents[j].second, contentions, true);
+                unsigned int added_now = grow_a_component(
+                            negativecomponents[j].first,
+                            negativecomponents[j].second, contentions, true);
                 
-                newxy = find_color(flaggedcolors[j], negativecomponents[j]);
-                if (newxy.first >= 0)
+                /* If grow_a_component returns 0 it means that the component is
+                 * about to disappear, but we can't easily find its outline; we
+                 * can safely remove its color from negativecomponents to ignore
+                 * it in the future.
+                 * A better solution would be to improve calculate_outline and
+                 * make it find also the border of diagonal lines, but this
+                 * solution should work in all cases without any performance
+                 * penalty.
+                 */
+
+                if (added_now != 0)
+                {
+                    added += added_now;
+                    newxy = find_color(flaggedcolors[j], negativecomponents[j]);
+                }
+
+                if (added_now != 0 && newxy.first >= 0)
                     negativecomponents[j] = newxy;
                 else
                 {
@@ -521,7 +537,7 @@ int growoff_i[3][3][2] = { { { -1, 0 }, { -1, 1 }, { 0, 1 } }, { { -1, -1 }, {
 void Surface::calculate_outline(const int x, const int y,
                                 vector<pair<int, int> >& outside,
                                 vector<pair<int, int> >& inside,
-                                bool debug_image)
+                                bool debug_image, bool allow_remove)
 {
     guint8* pixels = cairo_surface->get_data();
     int stride = cairo_surface->get_stride();
@@ -673,13 +689,18 @@ void Surface::calculate_outline(const int x, const int y,
 
             if (changes == 0)
             {
-                PRC(pixels + xin*4 + yin*stride) |= RED;
-                PRC(pixels + xout*4 + yout*stride) |= BLUE;
-                if(debug_image)
-                    save_debug_image("failed_repair");
-                std::stringstream msg;
-                msg << "Failed repairing @ (" << xin << "," << yin << ")\n";
-                throw std::logic_error(msg.str());
+                if (allow_remove)
+                    return;
+                else
+                {
+                    PRC(pixels + xin*4 + yin*stride) |= RED;
+                    PRC(pixels + xout*4 + yout*stride) |= BLUE;
+                    if(debug_image)
+                        save_debug_image("failed_repair");
+                    std::stringstream msg;
+                    msg << "Failed repairing @ (" << xin << "," << yin << ")\n";
+                    throw std::logic_error(msg.str());
+                }
             }
             else
                 blasts++;
@@ -736,7 +757,17 @@ guint Surface::grow_a_component(int x, int y, int& contentions, bool reversed)
          * We also have to change the coordinates in order to point at the real
          * component.
          */
-        calculate_outline(x, y, inside, outside);
+        calculate_outline(x, y, inside, outside, true, true);
+
+        /* With allow_remove = true, calculate_outline returns an empty inside
+         * if it fails to calculate the outline. If we're on a negative
+         * component this usually means that the component is a diagonal line
+         * and is about to disappear; we can safely inform the caller by
+         * returning 0 (aka "no pixel changed")
+         */
+        if (inside.size() == 0)
+            return 0;
+
         run_to_border(x, y);
         ownclr = PRC(pixels + x*4 + y*stride);  // Use the real component's color
     }

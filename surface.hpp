@@ -122,7 +122,7 @@ protected:
     void run_to_border(int& x, int& y);
     void calculate_outline(int x, int y, vector<std::pair<int, int> >& outside,
                            vector<std::pair<int, int> >& inside,
-                           bool debug_image = true);
+                           bool debug_image = true, bool allow_remove = false);
     coordpair find_color(guint32 color, coordpair startpoint);
 
     // Misc. Functions
