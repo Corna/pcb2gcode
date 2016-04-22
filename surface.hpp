@@ -110,7 +110,7 @@ protected:
         return int(yi * ivalue_t(dpi)) + zero_y;
     }
 
-    std::vector<std::pair<int, int> > fill_all_components();
+    std::vector<std::pair<int, int> > fill_all_components(bool internal_components);
     void fill_a_component(int x, int y, guint32 argb);
     unsigned int grow_a_component(int x, int y, int& contentions, bool reversed);
     bool allow_grow(int x, int y, guint32 ownclr, guint32 extraclr);

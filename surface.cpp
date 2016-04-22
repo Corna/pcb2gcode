@@ -135,7 +135,7 @@ vector<shared_ptr<icoords> > Surface::get_toolpath(shared_ptr<RoutingMill> mill,
     Isolator* iso = dynamic_cast<Isolator*>(mill.get());
     int extra_passes = iso ? iso->extra_passes : 0;
 
-    coords components = fill_all_components();
+    coords components = fill_all_components(mill->internal_components);
     coords negativecomponents;
 
     int added = -1;
@@ -245,7 +245,7 @@ vector<shared_ptr<icoords> > Surface::get_toolpath(shared_ptr<RoutingMill> mill,
     if(removed_negativecomponents)
     {
         cerr << "\nWarning: " << removed_negativecomponents << " internal"
-                " toolpath cutoff" << (removed_negativecomponents == 1 ?
+                " toolpath" << (removed_negativecomponents == 1 ?
                 " has" : "s have") << " been removed.\n";
     }
 
@@ -308,7 +308,7 @@ guint32 Surface::get_an_unused_color()
  returns the	list floodfill-seed points
  */
 /******************************************************************************/
-std::vector<std::pair<int, int> > Surface::fill_all_components()
+std::vector<std::pair<int, int> > Surface::fill_all_components(bool internal_components)
 {
     int x;
     int y;
@@ -329,7 +329,8 @@ std::vector<std::pair<int, int> > Surface::fill_all_components()
                 components.push_back(pair<int, int>(x, y));
                 fill_a_component(x, y, get_an_unused_color());
             }
-            else if ((PRC(pixels + x*4 + y*stride) | OPAQUE) == BLACK)
+            else if (internal_components &&
+                     (PRC(pixels + x*4 + y*stride) | OPAQUE) == BLACK)
             {
                 guint32 c = get_an_unused_color();
 
@@ -340,59 +341,60 @@ std::vector<std::pair<int, int> > Surface::fill_all_components()
     }
 
     // Remove all the invalid negative components
-    for (int i = 0; i < flaggedcolors.size(); i++)
-    {
-        for (y = 0; y <= max_y; y++)
+    if (internal_components)
+        for (int i = 0; i < flaggedcolors.size(); i++)
         {
-            for (x = 0; x <= max_x; x++)
+            for (y = 0; y <= max_y; y++)
             {
-                if (PRC(pixels + x*4 + y*stride) == flaggedcolors[i])
+                for (x = 0; x <= max_x; x++)
                 {
-                    coords inside, outside;
-                    coords::iterator iter;
-                    guint32 outside_color;
-                    guint32 this_color;
-                    
-                    remove_color = false;
-                    
-                    try
+                    if (PRC(pixels + x*4 + y*stride) == flaggedcolors[i])
                     {
-                        calculate_outline(x, y, outside, inside, false);
-                        outside_color = PRC(pixels + outside[0].first*4 + outside[0].second*stride);
+                        coords inside, outside;
+                        coords::iterator iter;
+                        guint32 outside_color;
+                        guint32 this_color;
                         
-                        for (iter = outside.begin(); iter != outside.end(); iter++)
+                        remove_color = false;
+                        
+                        try
                         {
-                            this_color = PRC(pixels + iter->first*4 + iter->second*stride);
-                            if (this_color != outside_color || this_color == (RED | BLUE))
+                            calculate_outline(x, y, outside, inside, false);
+                            outside_color = PRC(pixels + outside[0].first*4 + outside[0].second*stride);
+                            
+                            for (iter = outside.begin(); iter != outside.end(); iter++)
                             {
-                                remove_color = true;
-                                break;
+                                this_color = PRC(pixels + iter->first*4 + iter->second*stride);
+                                if (this_color != outside_color || this_color == (RED | BLUE))
+                                {
+                                    remove_color = true;
+                                    break;
+                                }
                             }
                         }
-                    }
-                    catch (std::logic_error& e)
-                    {
-                        /* If calculate_outline throws a std::logic_error it
-                         * usually means that we're trying to compute the
-                         * outline of a border of the image. In this case the
-                         * negative component is invalid and must be removed.
-                         */
-                        remove_color = true;
-                    }
-                    
-                    if (remove_color)
-                    {
-                        fill_a_component(x, y, BLACK);
-                        flaggedcolors.erase(flaggedcolors.begin() + i);
-                        --i;
-                    }
+                        catch (std::logic_error& e)
+                        {
+                            /* If calculate_outline throws a std::logic_error it
+                             * usually means that we're trying to compute the
+                             * outline of a border of the image. In this case the
+                             * negative component is invalid and must be removed.
+                             */
+                            remove_color = true;
+                        }
+                        
+                        if (remove_color)
+                        {
+                            fill_a_component(x, y, BLACK);
+                            flaggedcolors.erase(flaggedcolors.begin() + i);
+                            --i;
+                        }
 
-                    x = max_x + 1;
-                    y = max_y + 1;
+                        x = max_x + 1;
+                        y = max_y + 1;
+                    }
                 }
             }
         }
-    }
 
     return components;
 }
