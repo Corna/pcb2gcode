@@ -27,6 +27,7 @@ using std::cerr;
 using std::flush;
 using std::ios_base;
 using std::left;
+using std::to_string;
 
 #include <cmath>
 using std::ceil;
@@ -132,8 +133,8 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name)
     Tiling tiling( tileInfo, cfactor );
     tiling.setGCodeEnd( "\nG04 P0 ( dwell for no time -- G64 should not smooth over this point )\n"
         "G00 Z" + str( format("%.3f") % ( mill->zchange * cfactor ) ) + 
-        " ( retract )\n\n" + postamble + "M5 ( Spindle off. )\nM9 ( Coolant off. )\n"
-        "M2 ( Program end. )\n\n" );
+        " ( retract )\n\n" + postamble + "M5 ( Spindle off. )\nG04 P" +
+        to_string(mill->spindown_time) + "\nM9 ( Coolant off. )\nM2 ( Program end. )\n\n" );
 
     tiling.initialXOffsetVar = globalVars.getUniqueCode();
     tiling.initialYOffsetVar = globalVars.getUniqueCode();
@@ -197,7 +198,8 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name)
     }
 
     of << "F" << mill->feed * cfactor << " ( Feedrate. )\n"
-       << "M3 ( Spindle on clockwise. )\n";
+       << "M3 ( Spindle on clockwise. )\n"
+       << "G04 P" << mill->spinup_time << "\n";
     
     tiling.header( of );
 

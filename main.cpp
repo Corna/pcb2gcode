@@ -91,6 +91,8 @@ int main(int argc, char* argv[])
     const double tolerance = vm["tolerance"].as<double>() * unit;
     const bool explicit_tolerance = !vm["nog64"].as<bool>();
     const string outputdir = vm["output-dir"].as<string>();
+    const double spindown_time = vm.count("spindown-time") ?
+        vm["spindown-time"].as<double>() : vm["spinup-time"].as<double>();
     shared_ptr<Isolator> isolator;
 
     if (vm.count("front") || vm.count("back"))
@@ -113,6 +115,8 @@ int main(int argc, char* argv[])
         isolator->optimise = vm["optimise"].as<bool>();
         isolator->tolerance = tolerance;
         isolator->explicit_tolerance = explicit_tolerance;
+        isolator->spinup_time = vm["spinup-time"].as<double>();
+        isolator->spindown_time = spindown_time;
     }
 
     shared_ptr<Cutter> cutter;
@@ -135,6 +139,8 @@ int main(int argc, char* argv[])
         cutter->optimise = vm["optimise"].as<bool>();
         cutter->tolerance = tolerance;
         cutter->explicit_tolerance = explicit_tolerance;
+        cutter->spinup_time = vm["spinup-time"].as<double>();
+        cutter->spindown_time = spindown_time;
         cutter->bridges_num = vm["bridgesnum"].as<unsigned int>();
         cutter->bridges_width = vm["bridges"].as<double>() * unit;
         if (vm.count("zbridges"))
@@ -154,6 +160,8 @@ int main(int argc, char* argv[])
         driller->speed = vm["drill-speed"].as<int>();
         driller->tolerance = tolerance;
         driller->explicit_tolerance = explicit_tolerance;
+        driller->spinup_time = vm["spinup-time"].as<double>();
+        driller->spindown_time = spindown_time;
         driller->zchange = vm["zchange"].as<double>() * unit;
     }
 

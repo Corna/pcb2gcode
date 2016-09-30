@@ -43,6 +43,8 @@ public:
     double zwork;
     double tolerance;
     bool explicit_tolerance;
+    double spinup_time;
+    double spindown_time;
 };
 
 /******************************************************************************/

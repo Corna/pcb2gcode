@@ -54,6 +54,7 @@ using std::min_element;
 using std::cerr;
 using std::ios_base;
 using std::left;
+using std::to_string;
 
 /******************************************************************************/
 /*
@@ -187,8 +188,9 @@ void ExcellonProcessor::export_ngc(const string of_dir, const string of_name, sh
 
     zchange << setprecision(3) << fixed << driller->zchange * cfactor;
     tiling->setGCodeEnd( "G00 Z" + zchange.str() + " ( All done -- retract )\n"
-                         + postamble_ext + "\nM5      (Spindle off.)\n"
-                         "M9      (Coolant off.)\nM2      (Program end.)\n\n");
+                         + postamble_ext + "\nM5      (Spindle off.)\nG04 P"
+                         + to_string(driller->spindown_time) +
+                         "\nM9      (Coolant off.)\nM2      (Program end.)\n\n");
 
     //open output file
     std::ofstream of;
@@ -242,11 +244,13 @@ void ExcellonProcessor::export_ngc(const string of_dir, const string of_name, sh
         {
             of << "G00 Z" << driller->zchange * cfactor << " (Retract)\n" << "T"
                << it->first << "\n" << "M5      (Spindle stop.)\n"
+               << "G04 P" << driller->spindown_time
                << "(MSG, Change tool bit to drill size " << it->second.diameter
                << " " << it->second.unit << ")\n"
                << "M6      (Tool change.)\n"
                << "M0      (Temporary machine stop.)\n"
-               << "M3      (Spindle on clockwise.)\n" << "\n";
+               << "M3      (Spindle on clockwise.)\n"
+               << "G04 P" << driller->spinup_time << "\n\n";
         }
         
         if( nog81 )
@@ -375,9 +379,10 @@ void ExcellonProcessor::export_ngc(const string of_dir, const string of_name, sh
     cout << "Exporting drill... " << flush;
 
     zchange << setprecision(3) << fixed << target->zchange * cfactor;
-    tiling->setGCodeEnd( "G00 Z" + zchange.str() + " ( All done -- retract )\n" +
-                         postamble_ext + "\nM5      (Spindle off.)\n"
-                         "M9      (Coolant off.)\nM2      (Program end.)\n\n");
+    tiling->setGCodeEnd( "G00 Z" + zchange.str() + " ( All done -- retract )\n"
+                     + postamble_ext + "\nM5      (Spindle off.)\nG04 P"
+                     + to_string(target->spindown_time) +
+                     "\nM9      (Coolant off.)\nM2      (Program end.)\n\n");
 
     // open output file
     std::ofstream of;
@@ -416,7 +421,8 @@ void ExcellonProcessor::export_ngc(const string of_dir, const string of_name, sh
     of << preamble_ext << preamble << "S" << left << target->speed
        << "    (RPM spindle speed.)\n" << "F" << target->feed * cfactor
        << " (Feedrate)\nM3        (Spindle on clockwise.)\n"
-       << "G00 Z" << target->zsafe * cfactor << "\n\n";
+       << "G04 P" << target->spinup_time
+       << "\nG00 Z" << target->zsafe * cfactor << "\n\n";
 
     tiling->header( of );
 
